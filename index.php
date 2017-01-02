@@ -31,6 +31,7 @@ function payant_woocommerce_init() {
 			$this->live_private_key 	= $this->settings['live_private_key'];
 			$this->demourl 				= $this->settings['demo_base_url'];
 			$this->liveurl 				= $this->settings['live_base_url'];
+			$this->demo_mode 			= $this->settings['demo_mode'];
 
 			$this->msg['message'] 	= "";
 			$this->msg['class'] 	= "";
@@ -178,14 +179,14 @@ function payant_woocommerce_init() {
 	        	  <input type="hidden" name="txnid" value="'.$txnid.'" />
 	        	  <input type="hidden" name="reference_code" id="reference_code" value="" />
 
-				  <script src="'.($this->enable_demo == "yes" ? $this->demourl : $this->liveurl).'/assets/js/inline.min.js"></script>
+				  <script src="'.($this->demo_mode == "yes" ? $this->demourl : $this->liveurl).'/assets/js/inline.min.js"></script>
 				  <button type="button" onclick="payWithPayant()"> Pay </button> 
 				</form>
 
 				<script>
 				  function payWithPayant() {
 				    var handler = Payant.invoice({
-				      "key": "'.($this->enable_demo == "yes" ? $this->demo_public_key : $this->live_public_key).'",
+				      "key": "'.($this->demo_mode == "yes" ? $this->demo_public_key : $this->live_public_key).'",
 				      "client": {
 				      	"first_name": "'.$order->billing_first_name.'",
 				      	"last_name": "'.$order->billing_last_name.'",
@@ -236,7 +237,7 @@ function payant_woocommerce_init() {
 
 	                    $headers = array(
 							'Content-Type'	=> 'application/json',
-							'Authorization' => 'Bearer ' . ($this->enable_demo == "yes" ? $this->demo_private_key : $this->live_private_key)
+							'Authorization' => 'Bearer ' . ($this->demo_mode == "yes" ? $this->demo_private_key : $this->live_private_key)
 						);
 
 						$body = array();
@@ -247,7 +248,7 @@ function payant_woocommerce_init() {
 							'timeout'	=> 60
 						);
 
-						$request = wp_remote_get(($this->enable_demo == "yes" ? $this->demourl : $this->liveurl).'/payments/'.$payant_ref, $args);
+						$request = wp_remote_get(($this->demo_mode == "yes" ? $this->demourl : $this->liveurl).'/payments/'.$payant_ref, $args);
 
 						if (!is_wp_error($request) && 200 == wp_remote_retrieve_response_code($request)) {
 							$response = json_decode(wp_remote_retrieve_body($request));
