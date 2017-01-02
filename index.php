@@ -178,7 +178,7 @@ function payant_woocommerce_init() {
 	        	  <input type="hidden" name="txnid" value="'.$txnid.'" />
 	        	  <input type="hidden" name="reference_code" id="reference_code" value="" />
 
-				  <script src="'.($this->enable_demo == "yes" ? $this->demourl : $this->liveurl).'/assets/js/inline_local.min.js"></script>
+				  <script src="'.($this->enable_demo == "yes" ? $this->demourl : $this->liveurl).'/assets/js/inline.min.js"></script>
 				  <button type="button" onclick="payWithPayant()"> Pay </button> 
 				</form>
 
