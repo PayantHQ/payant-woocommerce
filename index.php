@@ -3,7 +3,7 @@
 Plugin Name: Payant WooCommerce Payment Gateway
 Plugin URI: https://www.payant.ng
 Description: Payant Payment gateway for woocommerce
-Version: 1.0
+Version: 1.1
 Author: Payant Team
 Author URI: https://www.payant.ng
 */
@@ -71,6 +71,14 @@ function payant_woocommerce_init() {
 		}
 
 		/**
+		 * Display paystack payment icon
+		 */
+		public function get_icon() {
+			$icon  = '<img src="' . plugins_url( 'assets/images/payant-cards.png' , __FILE__ ) . '" alt="cards" />';
+			return apply_filters( 'woocommerce_gateway_icon', $icon, $this->id );
+		}
+
+		/**
 		 * Initialise Gateway Settings Form Fields
 		 */
 		function init_form_fields() {
@@ -91,16 +99,16 @@ function payant_woocommerce_init() {
 					'title' => __('Title:', 'payant'),
 					'type'=> 'text',
 					'description' => __('This controls the title which the user sees during checkout.', 'payant'),
-					'default' => __('Payant', 'payant') ),
+					'default' => __('Credit/Debit Cards', 'payant') ),
 				'description' => array(
 					'title' => __('Description:', 'payant'),
 					'type' => 'textarea',
 					'description' => __('This controls the description which the user sees during checkout.', 'payant'),
-					'default' => __('Pay securely by Credit or Debit card through Payant Secure Servers.', 'payant') ),
+					'default' => __('Pay securely with your Credit/Debit card through Payant Secure Servers.', 'payant') ),
 				'fee_bearer' => array(
 					'title' => __('Fee Bearer <code>account</code> or <code>client</code>', 'payant'),
 					'type' => 'text',
-					'description' => __('Given in your Demo Dashboard Settings by Payant'),
+					'description' => __('Who bears the transaction fees?'),
 					'default' => 'client' ),
 				'demo_base_url' => array(
 					'title' => __('Demo API Base URL', 'payant'),
@@ -145,7 +153,7 @@ function payant_woocommerce_init() {
 	     * Receipt Page
 	     **/
 	    function receipt_page($order) {
-	        echo '<p>'.__('Thank you for your order, please click the button below to pay with Payant.', 'payant').'</p>';
+	        echo '<p>'.__('Thank you for your order, please click the button below to pay with your Credit/Debit Card.', 'payant').'</p>';
 	        echo $this->generate_payant_form($order);
 	    }
 
