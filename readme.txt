@@ -1,11 +1,10 @@
 === Payant WooCommerce Payment Gateway ===
 Contributors: Payant Team
-Tags: payant, woocommerce, payment gateway, interswitch, nigeria, mastercard, visa
+Tags: payant, woocommerce, payment gateway, interswitch, nigeria, mastercard, visa, verve
 Requires at least: 4.0.1
-Tested up to: 4.6
+Tested up to: 4.7.2
 Stable tag: 4.3
 License: GPLv3 or later License
-URI: http://www.gnu.org/licenses/gpl-3.0.html
 
 Payant WooCommerce Payment Gateway allows you to accept online payments from local and international customers
 
@@ -19,7 +18,7 @@ Payant is a web-based invoicing software that helps you create beautiful invoice
 
 To signup for a Payant account visit our website by clicking [here](https://payant.ng)
 
-Payant Woocommerce Payment Gateway allows you to accept payment on your Woocommerce store using MasterCard, Visa Cards and Verve Card(Coming Soon).
+Payant Woocommerce Payment Gateway allows you to accept payment on your Woocommerce store using MasterCard, Visa Cards and Verve Card.
 
 With this Payant Woocommerce Payment Gateway plugin, you will be able to accept the following payment methods in your shop:
 
@@ -33,7 +32,7 @@ This plugin is meant to be used by merchants in Nigeria.
 
 = Plugin Features =
 
-*   __Accept payment__ via MasterCard, Visa and Verve Card(Coming Soon).
+*   __Accept payment__ via MasterCard, Visa and Verve Card.
 * 	__Seamless integration__ into the WooCommerce checkout page. Accept payment directly on your site, no redirects
 *   __Send Receipts__ automatically to your customers immediately after payment
 
