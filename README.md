@@ -1,6 +1,6 @@
 > To install the plugin on your website, use the latest version from the WordPress plugin directory [Payant WooCommerce Payment Gateway](https://wordpress.org/plugins/payant-woocommerce/)
 
-# Payant WooCommerce Payment Gateway ===
+# Payant WooCommerce Payment Gateway
 **Contributors:** Payant Team
 **Tags:** payant, woocommerce, payment gateways, mastercard, visa cards, verve cards, nigeria, bank payments, phone number payments
 **Requires at least:** 4.7
@@ -107,9 +107,9 @@ To configure the plugin, go to __WooCommerce > Settings__ from the left hand men
 *	Added Payment Methods
 *	General Bug Fixes and Improvements
 
-### 1.2, Oct 26, 2017=
+### 1.2, Oct 26, 2017
 *	Few Updates and Bug Fixes
 
-### 1.0.0, Jan 1, 2017=
+### 1.0.0, Jan 1, 2017
 *   First release
 
