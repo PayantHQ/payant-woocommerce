@@ -3,11 +3,11 @@
 Plugin Name: Payant WooCommerce Payment Gateway
 Plugin URI: https://www.payant.ng
 Description: Payant Payment gateway for woocommerce
-Version: 1.1
+Version: 2.0
 Author: Payant Team
 Author URI: https://www.payant.ng
 */
-
+ 
 add_action('plugins_loaded', 'payant_woocommerce_init', 0);
 
 function payant_woocommerce_init() {
@@ -16,36 +16,43 @@ function payant_woocommerce_init() {
 	class WC_Payant extends WC_Payment_Gateway {
 		public function __construct() {
 			$this->id = 'payant';
-			$this->medthod_title = 'Payant';
-			$this->has_fields = false;
+			$this->method_title = 'Payant';
+			$this->method_description = sprintf( 'Payant is the easiest way to accept payment from customers anywhere in the world. <a href="%1$s" target="_blank">Sign up</a> for a Payant account, and <a href="%2$s" target="_blank">get your API keys</a>.', 'https://payant.ng/get-started', 'https://payant.ng/settings/developer' );
+			
+			$this->has_fields = true;
 
+			// Load the form fields
 			$this->init_form_fields();
+
+			// Load the settings
 			$this->init_settings();
 
+			// Get setting values
 			$this->title 				= $this->settings['title'];
 			$this->description 			= $this->settings['description'];
-			$this->fee_bearer 			= $this->settings['fee_bearer'];
-			$this->demo_public_key 		= $this->settings['demo_public_key'];
-			$this->demo_private_key 	= $this->settings['demo_private_key'];
-			$this->live_public_key 		= $this->settings['live_public_key'];
-			$this->live_private_key 	= $this->settings['live_private_key'];
-			$this->demourl 				= $this->settings['demo_base_url'];
-			$this->liveurl 				= $this->settings['live_base_url'];
 			$this->demo_mode 			= $this->settings['demo_mode'];
 
-			$this->msg['message'] 	= "";
-			$this->msg['class'] 	= "";
+			$this->payment_methods 		= $this->settings['payment_methods'];
+			$this->fee_bearer 			= $this->settings['fee_bearer'];
+			
+			$this->demo_public_key 		= $this->settings['demo_public_key'];
+			$this->demo_private_key 	= $this->settings['demo_private_key'];
+
+			$this->live_public_key 		= $this->settings['live_public_key'];
+			$this->live_private_key 	= $this->settings['live_private_key'];
+
+			$this->demourl 				= $this->settings['demo_base_url'];
+			$this->liveurl 				= $this->settings['live_base_url'];
+
+			// Hooks
+			add_action( 'admin_notices', array( $this, 'admin_notices' ) );
+			add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 
 			add_action('init', array(&$this, 'check_payant_response'));
-			if ( version_compare( WOOCOMMERCE_VERSION, '2.0.0', '>=' ) ) {
-		        add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( &$this, 'process_admin_options' ) );
-		     } else {
-		        add_action( 'woocommerce_update_options_payment_gateways', array( &$this, 'process_admin_options' ) );
-		    }
 
 		    // Payment listener/API hook
-			add_action( 'woocommerce_api_wc_payant', array(&$this, 'check_payant_response'));
-			add_action('woocommerce_receipt_payant', array(&$this, 'receipt_page'));
+			add_action( 'woocommerce_api_wc_' . $this->id, array(&$this, 'check_payant_response'));
+			add_action('woocommerce_receipt_' . $this->id, array(&$this, 'receipt_page')); 
 
 			// Check if the gateway can be used
 			if (!$this->is_valid_for_use()) {
@@ -53,21 +60,58 @@ function payant_woocommerce_init() {
 			}
 		}
 
+
 		/**
 		 * Check if this gateway is enabled and available in the user's country.
 		 */
 		public function is_valid_for_use() {
+			$valid            = true;
 
-			if (!in_array(get_woocommerce_currency(), apply_filters('woocommerce_payant_supported_currencies', array('NGN')))) {
+			$message          = '';
 
-				$this->msg = 'Payant does not support your store currency. Kindly set it to Nigerian Naira &#8358; <a href="' . admin_url( 'admin.php?page=wc-settings&tab=general' ) . '">here</a>';
+			$valid_countries  = array( 'NG' );
+			$valid_currencies = array( 'NGN' );
 
-				return false;
+			$base_location    = wc_get_base_location();
 
+			if ( ! in_array( get_woocommerce_currency(), apply_filters( 'woocommerce_rave_supported_currencies',  $valid_currencies ) ) ) {
+				
+				$currencies = '';
+
+				foreach( $valid_currencies as $currency ) {
+					$currencies .= $currency . ' ('. get_woocommerce_currency_symbol( $currency ) .'), ';
+				}
+
+				$currencies = rtrim( $currencies, ', ' );
+
+				$message .= 'Payant does not support your store currency. Kindly set it to ' . $currencies . ' <a href="' . admin_url( 'admin.php?page=wc-settings&tab=general' ) . '">here</a><br>';
+
+				$valid = false;
 			}
 
-			return true;
+			if ( ! in_array( $base_location['country'], $valid_countries ) ) {
 
+				$message .= 'Payant does not support your store country. You need to set it to Nigeria <a href="' . admin_url( 'admin.php?page=wc-settings&tab=general' ) . '">here</a>';
+
+				$valid = false;
+			}
+
+			if ( ! $valid ) {
+				$this->msg = $message;			
+			}
+
+			return $valid;
+		}
+
+		/**
+		 * Check if Payant merchant details is filled
+		 */
+		public function admin_notices() {
+			// Check required fields
+			if ( ! ( $this->live_public_key && $this->live_private_key ) && ! ( $this->demo_public_key && $this->demo_private_key ) ) {
+				echo '<div class="error"><p>' . sprintf( 'Please enter your Payant merchant details <a href="%s">here</a> to be able to use the Payant WooCommerce plugin.', admin_url( 'admin.php?page=wc-settings&tab=checkout&section=payant' ) ) . '</p></div>';
+				return;
+			}
 		}
 
 		/**
@@ -84,56 +128,101 @@ function payant_woocommerce_init() {
 		function init_form_fields() {
  
 			$this->form_fields = array(
-				'enabled' => array(
-					'title' => __('Enable/Disable', 'payant'),
-					'type' => 'checkbox',
-					'label' => __('Enable Payant Payment Module.', 'payant'),
-					'default' => 'no' ),
-				'demo_mode' => array(
-					'title' => __('Enable/Disable Demo', 'payant'),
-					'type' => 'checkbox',
-					'label' => __('Enable Payant Demo.', 'payant'),
-					'description' => __('Demo mode enables you to test payments before going live. <br />Once you are ready to move to your LIVE account, uncheck this.'),
-					'default' => 'yes' ),
-				'title' => array(
-					'title' => __('Title:', 'payant'),
-					'type'=> 'text',
-					'description' => __('This controls the title which the user sees during checkout.', 'payant'),
-					'default' => __('Credit/Debit Cards', 'payant') ),
-				'description' => array(
-					'title' => __('Description:', 'payant'),
-					'type' => 'textarea',
-					'description' => __('This controls the description which the user sees during checkout.', 'payant'),
-					'default' => __('Pay securely with your Credit/Debit card through Payant Secure Servers.', 'payant') ),
+				'enabled' 		=> array(
+					'title' 		=> __('Enable/Disable', 'payant'),
+					'label'       	=> 'Enable Payant',
+					'type' 			=> 'checkbox',
+					'description' 		=> __('Enable Payant as a payment option on the checkout page.', 'payant'),
+					'default' 		=> 'no',
+					'desc_tip'    	=> true
+				),
+				'title' 		=> array(
+					'title' 		=> __('Title:', 'payant'),
+					'type'			=> 'text',
+					'description' 	=> __('This controls the title which the user sees during checkout.', 'payant'),
+					'desc_tip'    	=> true,
+					'default' 		=> __('Payant', 'payant') 
+				),
+				'description' 	=> array(
+					'title' 		=> __('Description:', 'payant'),
+					'type' 			=> 'textarea',
+					'description' 	=> __('This controls the description which the user sees during checkout.', 'payant'),
+					'desc_tip'    	=> true,
+					'default' 		=> __('Make payment using your debit/credit card, bank account & phone number.', 'payant') 
+				),
+				'demo_mode' 		=> array(
+					'title' 		=> __('Demo Mode', 'payant'),
+					'type' 			=> 'checkbox',
+					'label' 		=> __('Enable Demo Mode.', 'payant'),
+					'description' 	=> __('Demo mode enables you to test payments before going live. <br />Once you are ready to move to your LIVE account, uncheck this.'),
+					'desc_tip'    	=> true,
+					'default' 		=> 'yes' 
+				),
 				'fee_bearer' => array(
-					'title' => __('Fee Bearer <code>account</code> or <code>client</code>', 'payant'),
-					'type' => 'text',
-					'description' => __('Who bears the transaction fees?'),
-					'default' => 'client' ),
+					'title'         => 'Fee Bearer',
+					'type'          => 'select',
+					'class'         => 'wc-enhanced-select',
+					'description'   => 'Who bears the transaction fees?',
+					'desc_tip' 		=> true,
+					'default'       => '',
+					'options'       => array(
+						'client'      	=> 'Client: My customer bears the fees',
+						'account'      	=> 'Account: I will bear the fees'
+					)
+				),
 				'demo_base_url' => array(
-					'title' => __('Demo API Base URL', 'payant'),
-					'type' => 'text',
-					'default' => 'https://api.demo.payant.ng' ),
+					'title' 		=> __('Demo API Base URL', 'payant'),
+					'type' 			=> 'text',
+					'desc_tip'    	=> true,
+					'default' 		=> 'https://api.demo.payant.ng' 
+				),
 				'demo_public_key' => array(
-					'title' => __('Demo Public Key', 'payant'),
-					'type' => 'text',
-					'description' => __('Given in your Demo Dashboard Settings by Payant') ),
+					'title' 		=> __('Demo Public Key', 'payant'),
+					'type' 			=> 'text',
+					'description' 	=> __('Enter your Demo Public Key here.'),
+					'desc_tip'    	=> true 
+				),
 				'demo_private_key' => array(
-					'title' => __('Demo Private Key', 'payant'),
-					'type' => 'text',
-					'description' => __('Given in your Demo Dashboard Settings by Payant') ),
+					'title' 		=> __('Demo Private Key', 'payant'),
+					'type' 			=> 'text',
+					'description' 	=> __('Enter your Demo Private Key here.'),
+					'desc_tip'    	=> true 
+				),
 				'live_base_url' => array(
-					'title' => __('Live API Base URL', 'payant'),
-					'type' => 'text',
-					'default' => 'https://api.payant.ng' ),
+					'title' 		=> __('Live API Base URL', 'payant'),
+					'type' 			=> 'text',
+					'default' 		=> 'https://api.payant.ng',
+					'desc_tip'    	=> true 
+				),
 				'live_public_key' => array(
-					'title' => __('Live Public Key', 'payant'),
-					'type' => 'text',
-					'description' => __('Given in your Live Dashboard Settings by Payant') ),
+					'title' 		=> __('Live Public Key', 'payant'),
+					'type' 			=> 'text',
+					'description' 	=> __('Enter your Live Private Key here.'),
+					'desc_tip'    	=> true 
+				),
 				'live_private_key' => array(
-					'title' => __('Live Private Key', 'payant'),
-					'type' => 'text',
-					'description' => __('Given in your Live Dashboard Settings by Payant') )
+					'title' 		=> __('Live Private Key', 'payant'),
+					'type' 			=> 'text',
+					'description' 	=> __('Enter your Live Private Key here.'),
+					'desc_tip'    	=> true 
+				),
+				'payment_methods' => array(
+					'title'         => 'Payment Methods',
+					'type'          => 'multiselect',
+					'class'         => 'wc-enhanced-select',
+					'description'   => 'Select the payment methods you want for your customers.',
+					'desc_tip' 		=> true,
+					'default'       => '',
+					'options'       => array(
+						'card'      	=> 'Card',
+						'bank'      	=> 'Bank',
+						'phone'     	=> 'Phone',
+						'qr'        	=> 'QR'
+					),
+					'custom_attributes' => array(
+						'data-placeholder' => 'Select payment methods',
+					),
+				),
 			);
 		}
 
@@ -142,7 +231,7 @@ function payant_woocommerce_init() {
 	    */
 		public function admin_options() {
 	        echo '<h3>'.__('Payant Payment Gateway', 'payant').'</h3>';
-	        echo '<p>'.__('Payant makes Invoicing and Accepting Instant Payments easy for Africans').'</p>';
+	        echo '<p>'.__('Payant is the easiest way to accept payment from customers anywhere in the world.').'</p>';
 	        echo '<table class="form-table">';
 	        // Generate the HTML For the settings form.
 	        $this->generate_settings_html();
@@ -179,6 +268,15 @@ function payant_woocommerce_init() {
 	        		'quantity' => $item['qty']
 	        		));
 	        }
+
+	        if($order->get_total_shipping() > 0) {
+	        	array_push($items, array(
+	        		'item' => 'Shipping',
+	        		'description' => 'Total Shipping Cost',
+	        		'unit_cost' => $order->get_total_shipping(),
+	        		'quantity' => 1
+	        		));
+	        }
 	 
 	        $redirect_url = ($this->redirect_page_id == "" || $this->redirect_page_id == 0) ? get_site_url()."/":get_permalink($this->redirect_page_id);
 	
@@ -201,9 +299,10 @@ function payant_woocommerce_init() {
 				      	"phone": "'.(substr($order->billing_phone, 0, 1) == '+' ? $order->billing_phone : ((substr($order->billing_phone, 0, 1) == "0") ? "+234".substr($order->billing_phone, 1) : $order->billing_phone)).'",
 				      	"email": "'.$order->billing_email.'"
 				      },
-				      "due_date": "31/12/2017",
+				      "due_date": "31/12/2018",
 				      "fee_bearer": "'.$this->fee_bearer.'",
 				      "items": '.json_encode($items).',
+				      "payment_methods": '.json_encode($this->payment_methods).',
 				      callback: function(response) {
 				      	document.getElementById("reference_code").value = response.reference_code;
 				      	document.getElementById("payantForm").submit();
@@ -224,9 +323,30 @@ function payant_woocommerce_init() {
 	    function process_payment($order_id) {
 	        $order = new WC_Order($order_id);
 
-	        return array('result' => 'success', 'redirect' => add_query_arg('order',
-	            $order->id, add_query_arg('key', $order->order_key, get_permalink(get_option('woocommerce_pay_page_id'))))
-	        );
+	        if (version_compare('2.7', WOOCOMMERCE_VERSION, '>')) {
+	            return array(
+	                'result' => 'success',
+	                'redirect' => add_query_arg(
+	                    'key',
+	                    $order->order_key,
+	                    add_query_arg(
+	                        'order',
+	                        $order->id,
+	                        $order->get_checkout_payment_url(true)
+	                    )
+	                )
+	            );
+	        } else {
+	            return array(
+	                'result' => 'success',
+	                'redirect' => add_query_arg(
+	                    'key',
+	                    $order->get_order_key(),
+	                    $order->get_checkout_payment_url(true)
+	                )
+	            );
+	        }
+
 	    }
 
 	    /**
@@ -238,8 +358,9 @@ function payant_woocommerce_init() {
 	            $order_id_time = $_REQUEST['txnid'];
 	            $order_id = explode('_', $_REQUEST['txnid']);
 	            $order_id = (int)$order_id[0];
+
 	            if($order_id != ''){
-	                try {
+	                try {	                	
 	                    $order = new WC_Order($order_id);
 	                    $payant_ref = trim(htmlentities($_REQUEST['reference_code']));
 
@@ -266,10 +387,13 @@ function payant_woocommerce_init() {
 
 	        					$amount_paid	= $response->data->amount;
 
-	        					/*if (in_array( $order->get_status(), array('processing', 'completed', 'on-hold'))) {
-						        	wp_redirect($this->get_return_url($order));
+	        					if ( in_array( $order->get_status(), array( 'processing', 'completed', 'on-hold' ) ) ) {
+
+						        	wp_redirect( $this->get_return_url( $order ) );
+
 									exit;
-						        }*/
+
+						        }
 
 	        					if($amount_paid != $order_total) {
 	        						$order->update_status( 'on-hold', '' );
@@ -284,6 +408,8 @@ function payant_woocommerce_init() {
 
 				                    // Add Admin Order Note
 				                    $order->add_order_note('<strong>Look into this order</strong><br />This order is currently on hold.<br />Reason: Amount paid is less than or greater than the total order amount.<br />Amount Paid was <strong>&#8358;'.$amount_paid.'</strong> while the total order amount is <strong>&#8358;'.$order_total.'</strong><br />Payant Transaction Reference: '.$payant_ref );
+
+				                    wc_reduce_stock_levels( $order_id );
 
 									wc_add_notice( $notice, $notice_type );
 	        					}else {
@@ -307,25 +433,29 @@ function payant_woocommerce_init() {
 	                                $this->msg['message'] = "Thank you for shopping with us. However, Your payment was declined by Payant.";
 							}
 
-							/* Here */
+							wp_redirect( $this->get_return_url( $order ) );
+
+							exit;
 						}
 
-						wp_redirect( $this->get_return_url( $order ) );
+						wc_add_notice( 'Payment failed. Try again.', 'error');
+
+						wp_redirect( wc_get_page_permalink( 'checkout' ) );
 
 						exit;
 					}catch(Exception $e){
-                        // $errorOccurred = true;
-                        $msg = "Error";
+                        wc_add_notice( 'Payment failed. Try again.', 'error');
 
-                        wp_redirect( $this->get_return_url( $order ) );
+						wp_redirect( wc_get_page_permalink( 'checkout' ) );
 
 						exit;
                     }
-	 
 	            }
 	        }
 
-	        wp_redirect( wc_get_page_permalink( 'cart' ) );
+	        wc_add_notice( 'Payment failed. Try again.', 'error');
+
+			wp_redirect( wc_get_page_permalink( 'checkout' ) );
 
 			exit;
 	    }
